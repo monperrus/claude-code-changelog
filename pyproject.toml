@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-code-changelog"
+version = "0.1.0"
+description = "Mirror the Claude Code changelog into one file per version and email new releases."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "mypy", "ruff"]
+
+[project.scripts]
+claude-code-changelog = "claude_code_changelog._cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["claude_code_changelog"]
