@@ -11,7 +11,10 @@ Source: the docs page served as markdown (`Accept: text/markdown`), parsed from 
     claude-code-changelog --to you@example.org --json
 
 Writes `versions/<version>.md` for each unseen version, commits, pushes and emails
-the new entries. Silent when nothing is new; the first run seeds without email.
+the new entries. The email starts with the full path of the script that sent it,
+then an LLM-ranked list of the most important changes (`best-effort-completions.py
+--tier medium`; omitted if every backend fails). Silent when nothing is new; the
+first run seeds without email.
 Options: `--repo`, `--dir`, `--no-push`, `--dry-run`, `--json`.
 
 ## Dev

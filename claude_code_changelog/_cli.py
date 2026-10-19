@@ -36,12 +36,47 @@ def new_releases(releases: list[Release], vdir: Path) -> list[Release]:
     return [r for r in releases if not (vdir / f"{r.version}.md").exists()]
 
 
+PRIORITIZE_PROMPT = """Below are new Claude Code release notes. For a power user who runs \
+Claude Code daily (agents, hooks, skills, MCP, background jobs), list the 3 to 7 most \
+important changes, most important first, as markdown bullets of one line each. \
+Prefer new capabilities and behavior changes over minor fixes. Output only the bullets.
+
+"""
+
+
+def prioritize(changelog: str) -> str | None:
+    """LLM-ranked top changes via best-effort-completions.py; None if it fails."""
+    payload = {"messages": [{"role": "user", "content": PRIORITIZE_PROMPT + changelog}]}
+    try:
+        r = subprocess.run(
+            ["best-effort-completions.py", "--tier", "medium"],
+            input=json.dumps(payload), text=True, capture_output=True, timeout=600, check=False,
+        )
+        if r.returncode != 0:
+            print(f"prioritization failed (exit {r.returncode})", file=sys.stderr)
+            return None
+        content = json.loads(r.stdout)["choices"][0]["message"]["content"]
+    except (OSError, subprocess.TimeoutExpired, ValueError, LookupError, TypeError) as e:
+        print(f"prioritization failed: {e}", file=sys.stderr)
+        return None
+    return content.strip() or None
+
+
+def mail_body(new: list[Release], script: str, top: str | None) -> str:
+    parts = [f"Sent by `{script}`"]
+    if top:
+        parts.append(f"## Most important (LLM-ranked)\n\n{top}")
+    parts.append("\n\n---\n\n".join(r.to_markdown() for r in new))
+    return "\n\n".join(parts)
+
+
 def send_mail(to: str, new: list[Release]) -> None:
     newest = new[0].version
     subject = f"Claude Code {newest} changelog"
     if len(new) > 1:
         subject = f"Claude Code changelog: {len(new)} new versions ({newest})"
-    body = "\n\n---\n\n".join(r.to_markdown() for r in new)
+    changelog = "\n\n---\n\n".join(r.to_markdown() for r in new)
+    body = mail_body(new, str(Path(sys.argv[0]).resolve()), prioritize(changelog))
     subprocess.run(
         ["kuzymail", "send", "--to", to, "--subject", subject, "--markdown-stdin"],
         input=body, text=True, check=True, capture_output=True,

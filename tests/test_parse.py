@@ -38,3 +38,13 @@ def test_no_blocks_raises():
 def test_bad_label_skipped():
     rs = parse(SAMPLE + '<Update label="../x" description="d">a</Update>')
     assert len(rs) == 2
+
+
+def test_mail_body_header_and_priorities():
+    from claude_code_changelog._cli import mail_body
+
+    rs = parse(SAMPLE)
+    body = mail_body(rs, "/x/bin/claude-code-changelog", "* Added X")
+    assert body.startswith("Sent by `/x/bin/claude-code-changelog`")
+    assert body.index("Most important") < body.index("2.1.2")
+    assert "Most important" not in mail_body(rs, "s", None)
